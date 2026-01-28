@@ -170,6 +170,27 @@ Briefly state:
     )
     return resp.choices[0].message.content
 
+def split_pack_sections(md: str) -> dict:
+    """
+    Split le markdown du pack en sections:
+    ## 1) ... jusqu'à ## 7) ...
+    """
+    if not md:
+        return {}
+
+    pattern = r"(?ms)^##\s*([1-7])\)\s*(.*?)\n(.*?)(?=^##\s*[1-7]\)|\Z)"
+    sections = {str(i): "" for i in range(1, 8)}
+
+    for m in re.finditer(pattern, md):
+        num = m.group(1)
+        title = m.group(2).strip()
+        body = m.group(3).strip()
+        sections[num] = f"## {num}) {title}\n{body}".strip()
+
+    if all(v == "" for v in sections.values()):
+        sections["1"] = md
+
+    return sections
 
 # -------- UI --------
 st.set_page_config(page_title="First-Touch Sales Assistant", layout="wide")
@@ -268,24 +289,3 @@ if st.button("Debug: list MCP tools"):
     tools = run_async(list_tools())
     st.json(tools)
 
-def split_pack_sections(md: str) -> dict:
-    """
-    Split le markdown du pack en sections:
-    ## 1) ... jusqu'à ## 7) ...
-    """
-    if not md:
-        return {}
-
-    pattern = r"(?ms)^##\s*([1-7])\)\s*(.*?)\n(.*?)(?=^##\s*[1-7]\)|\Z)"
-    sections = {str(i): "" for i in range(1, 8)}
-
-    for m in re.finditer(pattern, md):
-        num = m.group(1)
-        title = m.group(2).strip()
-        body = m.group(3).strip()
-        sections[num] = f"## {num}) {title}\n{body}".strip()
-
-    if all(v == "" for v in sections.values()):
-        sections["1"] = md
-
-    return sections
