@@ -3,6 +3,7 @@ import json
 import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+import re
 
 from openai import OpenAI
 from mcp import ClientSession
@@ -64,9 +65,8 @@ def clean_domain(s: str) -> str:
 
 def extract_payload(result):
     """
-    Retourne un dict:
-    - text: texte concaténé
-    - json: dict/list si le texte est du JSON parseable
+    Retourne:
+    - text: texte concaténé (pour le prompt LLM)
     - raw: contenu brut (debug)
     """
     items = getattr(result, "content", []) or []
@@ -76,55 +76,12 @@ def extract_payload(result):
     for c in items:
         raw.append(str(c))
         t = getattr(c, "text", None)
-        if t is not None:
+        if t:
             texts.append(t)
 
-    text = "\n".join(texts).strip()
-
-    parsed = None
-    if text:
-        try:
-            parsed = json.loads(text)
-        except Exception:
-            parsed = None
-
-    return {"text": text, "json": parsed, "raw": raw}
-
-def normalize_firmo(firmo_payload: dict) -> dict:
-    data = firmo_payload.get("json")
-
-    # Si pas de JSON, on ne peut pas extraire proprement
-    if not isinstance(data, (dict,)):
-        return {
-            "company_name": "N/A",
-            "employee_size": "N/A",
-            "revenue": "N/A",
-            "hq": "N/A",
-            "industry": "N/A",
-        }
-
-    def pick(*keys, default="N/A"):
-        for k in keys:
-            v = data.get(k)
-            if v not in (None, "", [], {}):
-                return v
-        return default
-
-    # HQ parfois split en city/state/country
-    hq = pick("headquarters", "hq", "headquarters_location", "location", default=None)
-    if hq is None:
-        city = pick("headquartersCity", "city", default="")
-        state = pick("headquartersState", "state", default="")
-        country = pick("headquartersCountry", "country", default="")
-        parts = [p for p in [city, state, country] if p and p != "N/A"]
-        hq = ", ".join(parts) if parts else "N/A"
-
     return {
-        "company_name": pick("companyName", "name", "company_name"),
-        "employee_size": pick("employeeSize", "employees", "employee_count", "employee_size"),
-        "revenue": pick("revenue", "annualRevenue", "annual_revenue"),
-        "hq": hq,
-        "industry": pick("industry", "industryName", "primaryIndustry"),
+        "text": "\n".join(texts).strip(),
+        "raw": raw
     }
 
 
@@ -238,50 +195,49 @@ if submitted:
         st.error("Please enter a company domain (e.g. apple.com).")
     else:
         try:
-            with st.status("Generating first-touch pack...", expanded=False) as status:
-                status.write("MCP: firmographics")
+            with st.spinner("MCP: firmographics..."):
                 firmo_res = run_async(mcp_call("company_firmographic", {"companyDomain": domain}))
                 firmo = extract_payload(firmo_res)
 
-                status.write("MCP: technographics")
+            with st.spinner("MCP: technographics..."):
                 techno_res = run_async(mcp_call("company_technographic", {
                     "companyDomain": domain,
                     "categories": [c.strip() for c in categories.split(",") if c.strip()]
                 }))
                 techno = extract_payload(techno_res)
 
-                status.write("LLM: generating pack")
+            with st.spinner("LLM: generating pack..."):
                 md = make_brief_with_llm(domain, firmo, techno)
-    
 
-                st.session_state.setdefault("history", [])
-                st.session_state["history"].append({
-                    "domain": domain,
-                    "markdown": md
-                })
+            st.session_state.setdefault("history", [])
+            st.session_state["history"].append({"domain": domain, "markdown": md})
 
-                status.update(label="Done", state="complete")
+            st.success("Done")
 
-            tab1, tab2, tab3, tab4 = st.tabs(["Pack", "Data", "Export", "Debug"])
-            with tab1:
-                st.subheader("Company snapshot")
+            sections = split_pack_sections(md)
 
-                c1, c2, c3, c4 = st.columns(4)
-                firmo_clean = normalize_firmo(firmo)
-                c1.metric("Employees", firmo_clean["employee_size"])
-                c2.metric("Revenue", firmo_clean["revenue"])
-                c3.metric("HQ", firmo_clean["hq"])
-                c4.metric("Industry", firmo_clean["industry"])
-                st.divider()
+            tab_pack, tab_talk, tab_email, tab_conf, tab_export, tab_debug = st.tabs(
+                ["Pack", "Talking points", "Outbound email", "Data confidence", "Export", "Debug"]
+            )
 
-            with tab2:
-                st.subheader("Firmographics (raw)")
-                st.json(firmo)
+            with tab_pack:
+                for k in ["1", "2", "3", "4"]:
+                    if sections.get(k):
+                        st.markdown(sections[k])
+                        st.divider()
+                    else:
+                        st.info(f"Section {k} missing (N/A)")
 
-                st.subheader("Technographics (raw)")
-                st.json(techno)
+            with tab_talk:
+                st.markdown(sections.get("5", "N/A"))
 
-            with tab3:
+            with tab_email:
+                st.markdown(sections.get("6", "N/A"))
+
+            with tab_conf:
+                st.markdown(sections.get("7", "N/A"))
+
+            with tab_export:
                 st.download_button(
                     "Download Markdown",
                     data=md,
@@ -289,10 +245,13 @@ if submitted:
                     mime="text/markdown",
                 )
                 st.text_area("Copy", md, height=400)
-            with tab4:
-                st.json({"firmo": firmo, "techno": techno})
-                st.write("Firmo json parsed?", firmo["json"] is not None)
-                st.text_area("Firmo text", firmo["text"][:3000], height=200)
+
+            with tab_debug:
+                st.subheader("Firmographics (payload)")
+                st.json(firmo)
+                st.subheader("Technographics (payload)")
+                st.json(techno)
+
 
         except Exception as e:
             st.error("Error:")
@@ -308,3 +267,25 @@ async def list_tools():
 if st.button("Debug: list MCP tools"):
     tools = run_async(list_tools())
     st.json(tools)
+
+def split_pack_sections(md: str) -> dict:
+    """
+    Split le markdown du pack en sections:
+    ## 1) ... jusqu'à ## 7) ...
+    """
+    if not md:
+        return {}
+
+    pattern = r"(?ms)^##\s*([1-7])\)\s*(.*?)\n(.*?)(?=^##\s*[1-7]\)|\Z)"
+    sections = {str(i): "" for i in range(1, 8)}
+
+    for m in re.finditer(pattern, md):
+        num = m.group(1)
+        title = m.group(2).strip()
+        body = m.group(3).strip()
+        sections[num] = f"## {num}) {title}\n{body}".strip()
+
+    if all(v == "" for v in sections.values()):
+        sections["1"] = md
+
+    return sections
