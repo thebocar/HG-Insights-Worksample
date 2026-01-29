@@ -163,19 +163,18 @@ Guidelines:
 - Avoid generic statements.
 - Every point must be clearly grounded in the detected tech stack.
 
-## 6) Outbound email 
 ## 6) Outbound email
 Write a concise, professional outbound email.
 
 Requirements:
 - Max 8 lines (excluding signature)
-- Neutral, consultative tone, neutral sales tone
+- Neutral sales tone, a little consultative
 - Personalized using the company’s tech stack or intent
 - No generic statements or placeholders
 - Reference exactly ONE specific technology or stack pattern from the data
 - Focus on a concrete operational challenge, not a product pitch
 - No hype, no buzzwords
-- Avoid phrases like "given your tech stack", "I noticed you use", or buzzwords
+- Avoid buzzwords
 
 Structure:
 - Specific subject line
