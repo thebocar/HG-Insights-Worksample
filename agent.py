@@ -85,7 +85,8 @@ def extract_payload(result):
     }
 
 
-def make_brief_with_llm(domain: str, firmo: dict, techno: dict) -> str:
+def make_brief_with_llm(domain: str, firmo: dict, techno: dict, focus_categories: list[str]) -> str:
+    focus_txt = ", ".join(focus_categories) if focus_categories else "None (full stack overview)"
     prompt = f"""
 You are a B2B sales assistant helping a sales rep prepare for a first interaction.
 
@@ -94,17 +95,21 @@ Before a first interaction, identify the most relevant tech-based value angles a
 
 Company (domain): {domain}
 
+User-selected focus categories (for prioritization):
+{focus_txt}
+
 Firmographic data (source: HG Insights MCP):
 {json.dumps(firmo, ensure_ascii=False)}
 
 Technographic data (source: HG Insights MCP):
 {json.dumps(techno, ensure_ascii=False)}
 
-
 Rules:
 - Do NOT invent information.
 - Use ONLY the data provided above.
 - If a data point is missing or unclear, explicitly write "N/A".
+- If focus categories are provided, prioritize themes, risks, talking points, and the outbound email around those categories.
+- Do NOT assume missing categories are absent; the dataset may simply be broad and the focus is intentional.
 - Base every value angle and risk on a specific technology signal from the technographic data.
 - These are NOT confirmed buying signals.
 - These are hypotheses based on common market behavior for similar stacks.
@@ -138,7 +143,7 @@ Important:
 - These are hypotheses based on common market behavior for similar stacks.
 - If no clear theme can be inferred, write "N/A".
 
-## 4) Risks & watchouts
+## 4) Key risks & considerations
 - 3–6 concise bullets
 - Each risk must be directly tied to a technology or intent signal
 - Examples: stack complexity, migration risk, vendor lock-in, security exposure, tooling overlap
@@ -263,7 +268,8 @@ if submitted:
                 techno = extract_payload(techno_res)
 
             with st.spinner("LLM: generating pack..."):
-                md = make_brief_with_llm(domain, firmo, techno)
+                focus = [c.strip() for c in categories.split(",") if c.strip()]
+                md = make_brief_with_llm(domain, firmo, techno, focus)
 
             st.session_state.setdefault("history", [])
             st.session_state["history"].append({"domain": domain, "markdown": md})
@@ -273,7 +279,7 @@ if submitted:
             sections = split_pack_sections(md)
 
             tab_pack, tab_talk, tab_email, tab_conf, tab_export, tab_debug = st.tabs(
-                ["Pack", "Talking points", "Outbound email", "Data confidence", "Export", "Debug"]
+                ["Account overview", "Talking points", "Outbound email", "Data confidence", "Export", "Debug"]
             )
 
             with tab_pack:
