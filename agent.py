@@ -182,7 +182,7 @@ Structure:
 - Specific subject line
 - 1 observation grounded in the data
 - 1 implication or challenge
-- 1 open-ended question 
+- 1 subtle open-ended question 
 - A soft invitation to continue the discussion in a brief call
 
 ## 7) Data confidence
