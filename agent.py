@@ -145,23 +145,59 @@ Important:
 
 ## 5) Sales talking points
 Provide exactly 3 talking points.
-For each talking point:
-- Angle (what to focus on)
-- Why now (based on tech or intent signal)
-- Question to open the conversation
+
+For each talking point, use the following structure:
+- Angle (what to focus on): a short, clear focus area (3–5 words)
+- Signal (specific tech signal from the data): the specific technology or stack pattern observed
+- Why now (what tension / friction this creates today): what operational or strategic pressure this creates today
+- Impact (business or operational consequence): the concrete business or delivery consequence if unaddressed
+- Question (concrete question): one open-ended question to start the conversation
+
+Guidelines:
+- Keep each talking point concise
+- Avoid generic statements.
+- Every point must be clearly grounded in the detected tech stack.
 
 ## 6) Outbound email 
-Write a concise and formal outbound email:
-- Max 6 lines
+## 6) Outbound email
+Write a concise, professional outbound email.
+
+Requirements:
+- Max 8 lines (excluding signature)
+- Neutral, consultative tone, neutral sales tone
 - Personalized using the company’s tech stack or intent
-- Professional, neutral sales tone
+- No generic statements or placeholders
+- Reference exactly ONE specific technology or stack pattern from the data
+- Focus on a concrete operational challenge, not a product pitch
 - No hype, no buzzwords
+- Avoid phrases like "given your tech stack", "I noticed you use", or buzzwords
+
+Structure:
+- Specific subject line
+- 1 observation grounded in the data
+- 1 implication or challenge
+- 1 open-ended question
 
 ## 7) Data confidence
-Briefly state:
-- Which key data points were missing or incomplete
+Summarize data reliability using the following structure:
+
+### Data coverage
+- Firmographic data: High / Medium / Low
+- Technographic data: High / Medium / Low
+
+### Key gaps
+- List the most important missing or incomplete data points (or write "None")
 - How this impacts confidence in the analysis
+
+### Inference notes
+- Clearly state that intent themes, risks, and talking points are inferred from technology signals
+- Explicitly note that no confirmed buying intent or project timing data is available
 - Company-level buying intent signals are not available in this environment; intent themes are inferred from HG Insights taxonomy.
+
+### Confidence level
+- Overall confidence: High / Medium / Low
+
+Keep this section factual, structured, and easy to scan.
 """
     resp = llm.chat.completions.create(
         model=OPENROUTER_MODEL,
@@ -202,7 +238,7 @@ with st.form("gen"):
     domain_in = st.text_input("Company domain", placeholder="e.g. apple.com")
 
     categories = st.text_input(
-        "Categories (comma)",
+        "Categories",
         placeholder="Cloud, Data, Security",
         help="Optional. Filters technographics by category (fuzzy match). Leave empty for all categories."
     )
