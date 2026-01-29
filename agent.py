@@ -116,6 +116,7 @@ Rules:
 - If no clear theme can be inferred, write "N/A".
 - Keep the output concise, practical, and sales-ready.
 - Output must be in Markdown.
+- A declarative sentence ends with a period.
 
 Return EXACTLY the following sections and nothing else:
 
@@ -170,6 +171,7 @@ Requirements:
 - Max 8 lines (excluding signature)
 - Neutral sales tone, a little consultative
 - Personalized using the company’s tech stack or intent
+- Stay professional and avoid conversational or informal language formulations
 - No generic statements or placeholders
 - Reference exactly ONE specific technology or stack pattern from the data
 - Focus on a concrete operational challenge, not a product pitch
