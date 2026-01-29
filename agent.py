@@ -98,11 +98,11 @@ Company (domain): {domain}
 User-selected focus categories (for prioritization):
 {focus_txt}
 
-Firmographic data (source: HG Insights MCP):
-{json.dumps(firmo, ensure_ascii=False)}
+Firmographic data (source: HG Insights MCP, raw text):
+{firmo.get("text","")}
 
-Technographic data (source: HG Insights MCP):
-{json.dumps(techno, ensure_ascii=False)}
+Technographic data (source: HG Insights MCP, raw text):
+{techno.get("text","")}
 
 Rules:
 - Do NOT invent information.
@@ -119,7 +119,7 @@ Rules:
 
 Return EXACTLY the following sections and nothing else:
 
-## 1) Company snapshot
+## 1) Company profile
 - Company name
 - Employee size
 - Industry
@@ -236,18 +236,18 @@ def split_pack_sections(md: str) -> dict:
 st.set_page_config(page_title="First-Touch Sales Assistant", layout="wide")
 st.session_state.setdefault("history", [])
 st.title("First-Touch Sales Assistant")
-st.caption("Know what to say and where to push. Personalized angles and risks for your first sales conversation.")
+st.caption("Technology-driven insights to personalize your first sales outreach.")
 
 with st.form("gen"):
-    domain_in = st.text_input("Company domain", placeholder="e.g. apple.com")
+    domain_in = st.text_input("Target company domain", placeholder="e.g. apple.com")
 
     categories = st.text_input(
-        "Categories",
+        "Focus areas (optional)",
         placeholder="Cloud, Data, Security",
-        help="Optional. Filters technographics by category (fuzzy match). Leave empty for all categories."
+        help="Optional. Narrows the analysis to specific technology domains (e.g. Cloud, Data, Security,..). Leave empty for all categories."
     )
 
-    submitted = st.form_submit_button("Generate first-touch pack", type="primary")
+    submitted = st.form_submit_button("Generate account brief", type="primary")
 
 if submitted:
     domain = clean_domain(domain_in)
@@ -256,29 +256,29 @@ if submitted:
         st.error("Please enter a company domain (e.g. apple.com).")
     else:
         try:
-            with st.spinner("MCP: firmographics..."):
+            with st.spinner("Looking up firmographics..."):
                 firmo_res = run_async(mcp_call("company_firmographic", {"companyDomain": domain}))
                 firmo = extract_payload(firmo_res)
 
-            with st.spinner("MCP: technographics..."):
+            with st.spinner("Looking up technographics..."):
                 techno_res = run_async(mcp_call("company_technographic", {
                     "companyDomain": domain,
                 }))
                 techno = extract_payload(techno_res)
 
-            with st.spinner("LLM: generating pack..."):
+            with st.spinner("Generating pack..."):
                 focus = [c.strip() for c in categories.split(",") if c.strip()]
                 md = make_brief_with_llm(domain, firmo, techno, focus)
 
             st.session_state.setdefault("history", [])
             st.session_state["history"].append({"domain": domain, "markdown": md})
 
-            st.success("Done")
+            st.success("Brief generated successfully")
 
             sections = split_pack_sections(md)
 
-            tab_pack, tab_talk, tab_email, tab_conf, tab_export, tab_debug = st.tabs(
-                ["Account overview", "Talking points", "Outbound email", "Data confidence", "Export", "Debug"]
+            tab_pack, tab_talk, tab_email, tab_conf, tab_export = st.tabs(
+                ["Account overview", "Talking points", "Outbound email", "Data confidence", "Export"]
             )
 
             with tab_pack:
@@ -307,25 +307,8 @@ if submitted:
                 )
                 st.text_area("Copy", md, height=400)
 
-            with tab_debug:
-                st.subheader("Firmographics (payload)")
-                st.json(firmo)
-                st.subheader("Technographics (payload)")
-                st.json(techno)
-
 
         except Exception as e:
             st.error("Error:")
             st.exception(e)
-
-async def list_tools():
-    async with streamable_http_client(PHOENIX_MCP_URL) as (read, write, _):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            tools = await session.list_tools()
-            return tools
-
-if st.button("Debug: list MCP tools"):
-    tools = run_async(list_tools())
-    st.json(tools)
 
