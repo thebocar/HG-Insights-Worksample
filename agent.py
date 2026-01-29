@@ -259,7 +259,6 @@ if submitted:
             with st.spinner("MCP: technographics..."):
                 techno_res = run_async(mcp_call("company_technographic", {
                     "companyDomain": domain,
-                    "categories": [c.strip() for c in categories.split(",") if c.strip()]
                 }))
                 techno = extract_payload(techno_res)
 
